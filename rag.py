@@ -7,11 +7,10 @@ load_dotenv()
 
 from langchain_community.document_loaders import WebBaseLoader
 from langchain_text_splitters import RecursiveCharacterTextSplitter
-from langchain_community.vectorstores import Chroma
 from langchain_openai import OpenAIEmbeddings
 from langchain_openai import ChatOpenAI
 from langchain_core.prompts import ChatPromptTemplate
-from langchain_core.runnables import RunnablePassthrough
+from langchain_core.runnables import RunnablePassthrough, RunnableLambda
 from langchain_core.output_parsers import StrOutputParser
 
 from mongo import MongoDBVectorStore
@@ -23,9 +22,9 @@ loader = WebBaseLoader(url, header_template={"User-Agent": "MyApp/1.0"})
 # 웹페이지 텍스트 -> Documents
 docs = loader.load()
 
-print('len(docs)', len(docs))
-print('len(docs[0].page_content)', len(docs[0].page_content))
-print('docs[0].page_content[5000:6000]', docs[0].page_content[5000:6000])
+# print('len(docs)', len(docs))
+# print('len(docs[0].page_content)', len(docs[0].page_content))
+# print('docs[0].page_content[5000:6000]', docs[0].page_content[5000:6000])
 
 
 # 텍스트 분할(Text Split)
@@ -35,9 +34,9 @@ splits = text_splitter.split_documents(docs)
 embedding = OpenAIEmbeddings()
 
 
-print('len(splits)', len(splits))
-print('splits[10]', splits[10])
-print('splits[10].page_content', splits[10].page_content)
+# print('len(splits)', len(splits))
+# print('splits[10]', splits[10])
+# print('splits[10].page_content', splits[10].page_content)
 
 
 # 인덱싱(Indexing) > 분할된 텍스트를 검색 가능한 형태로 만드는 단계
@@ -51,8 +50,8 @@ texts = [doc.page_content for doc in splits]
 vectorstore.add_texts(texts, embeddings)
 
 docs = vectorstore.similarity_search("격하 과정에 대해서 설명해주세요.")
-print(len(docs))
-print(docs[0])
+# print(len(docs))
+# print(docs[0])
 
 
 # Prompt
@@ -70,17 +69,20 @@ model = ChatOpenAI(model='gpt-4o-mini', temperature=0)
 # Rretriever
 retriever = vectorstore.as_retriever()
 
+# retriever.similarity_search를 RunnableLambda로 감싸기
+retriever_runnable = RunnableLambda(lambda q: retriever.similarity_search(q))
+
 # Combine Documents
-def format_docs(docs):
-    return '\n\n'.join(doc.page_content for doc in docs)
+format_docs_runnable = RunnableLambda(lambda docs: '\n\n'.join(doc['text'] for doc, _ in docs))
 
 # RAG Chain 연결
 rag_chain = (
-    {'context': retriever | format_docs, 'question': RunnablePassthrough()}
+    {'context': retriever_runnable | format_docs_runnable, 'question': RunnablePassthrough()}
     | prompt
     | model
     | StrOutputParser()
 )
 
 # Chain 실행
-rag_chain.invoke("격하 과정에 대해서 설명해주세요.")
+result = rag_chain.invoke("격하 과정에 대해서 설명해주세요.")
+print(result)

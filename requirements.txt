@@ -9,3 +9,11 @@ beautifulsoup4
 chromadb
 pymongo
 scikit-learn
+unstructured
+unstructured-inference 
+unstructured_pytesseract
+pypdf
+pi-heif
+pdf2image
+pytesseract
+pymupdf

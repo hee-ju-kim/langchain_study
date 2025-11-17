@@ -20,9 +20,9 @@ class MongoDBVectorStore(VectorStore):
 
         
     @classmethod
-    def from_texts(cls, texts: list, embedding: OpenAIEmbeddings, metadatas: list = None, mongo_uri: str = os.environ['DATABASE'], db_name: str = "langchain", collection_name: str = "vectors"):
+    def from_texts(cls, texts: list, embedding: OpenAIEmbeddings, metadatas: list = None):
         """텍스트와 임베딩을 MongoDB에 저장하고 MongoDBVectorStore 인스턴스를 반환"""
-        vectorstore = cls(mongo_uri, db_name, collection_name)
+        vectorstore = cls(embedding)
         embeddings = embedding.embed_documents(texts)
         vectorstore.add_texts(texts, embeddings, metadatas)
         return vectorstore
